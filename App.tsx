@@ -6,15 +6,39 @@ import { INITIAL_STATS } from './constants';
 import { generateAdoFunFact } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [hasVoted, setHasVoted] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  // Initialize state from localStorage
+  const [hasVoted, setHasVoted] = useState(() => localStorage.getItem('hasVoted') === 'true');
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(() => localStorage.getItem('selectedCountry'));
+  
   const [stats, setStats] = useState<Record<string, number>>(INITIAL_STATS);
   const [funFact, setFunFact] = useState<string>("");
   const [loadingFact, setLoadingFact] = useState(false);
 
+  // Restore state and fetch data on mount if user already voted
+  useEffect(() => {
+    if (hasVoted && selectedCountry) {
+      // Re-apply the user's vote to the visual stats
+      setStats(prev => ({
+        ...prev,
+        [selectedCountry]: (prev[selectedCountry] || 0) + 1
+      }));
+
+      // Fetch the fun fact
+      const loadFact = async () => {
+        setLoadingFact(true);
+        const text = await generateAdoFunFact();
+        setFunFact(text);
+        setLoadingFact(false);
+      };
+      loadFact();
+    }
+  }, []); // Run only once on mount
+
   // Handle user vote
   const handleVote = async (country: string) => {
     setSelectedCountry(country);
+    localStorage.setItem('hasVoted', 'true');
+    localStorage.setItem('selectedCountry', country);
     
     // Update local stats (simulate poll backend)
     setStats(prev => ({
@@ -29,6 +53,12 @@ const App: React.FC = () => {
     const text = await generateAdoFunFact();
     setFunFact(text);
     setLoadingFact(false);
+  };
+
+  const handleRePoll = () => {
+    localStorage.removeItem('hasVoted');
+    localStorage.removeItem('selectedCountry');
+    window.location.reload();
   };
 
   return (
@@ -46,7 +76,7 @@ const App: React.FC = () => {
         {hasVoted && (
           <div className="text-right pointer-events-auto">
              <button 
-               onClick={() => window.location.reload()}
+               onClick={handleRePoll}
                className="px-4 py-2 text-xs font-bold border border-blue-900/50 text-blue-400 hover:text-rose-400 hover:border-rose-500 transition-colors uppercase tracking-wider bg-black/50 backdrop-blur"
              >
                Re-Poll
@@ -133,11 +163,7 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
-      
-      {/* Footer */}
-      <footer className="absolute bottom-4 w-full text-center text-[10px] text-gray-600 font-mono pointer-events-none">
-        POWERED BY GEMINI • D3 • REACT
-      </footer>
+
     </div>
   );
 };
