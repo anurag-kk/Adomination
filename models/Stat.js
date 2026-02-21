@@ -12,5 +12,4 @@ const statSchema = new mongoose.Schema({
   }
 });
 
-const Stat = mongoose.model('Stat', statSchema);
-export default Stat;
+export default mongoose.models.Stat || mongoose.model('Stat', statSchema);
