@@ -3,56 +3,72 @@ import { RoseBackground } from './components/RoseBackground';
 import { PollModal } from './components/PollModal';
 import { MapVisualization } from './components/MapVisualization';
 import { INITIAL_STATS } from './constants';
-import { generateAdoFunFact } from './services/geminiService';
+import { generateAdoFunFact } from './services/adoFacts';
+
+const API_BASE_URL = '/api'; // Replace with your actual backend URL
 
 const App: React.FC = () => {
-  // Initialize state from localStorage
   const [hasVoted, setHasVoted] = useState(() => localStorage.getItem('hasVoted') === 'true');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(() => localStorage.getItem('selectedCountry'));
   
-  const [stats, setStats] = useState<Record<string, number>>(INITIAL_STATS);
+  // Start with empty stats, then fill from DB
+  const [stats, setStats] = useState<Record<string, number>>({});
   const [funFact, setFunFact] = useState<string>("");
   const [loadingFact, setLoadingFact] = useState(false);
 
-  // Restore state and fetch data on mount if user already voted
+  // 1. Fetch Global Stats from MongoDB on mount
   useEffect(() => {
-    if (hasVoted && selectedCountry) {
-      // Re-apply the user's vote to the visual stats
-      setStats(prev => ({
-        ...prev,
-        [selectedCountry]: (prev[selectedCountry] || 0) + 1
-      }));
+    const fetchGlobalStats = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/stats`);
+        const data = await response.json();
+        setStats(data); // Expecting { "USA": 10, "Japan": 25, ... }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
+    };
 
-      // Fetch the fun fact
-      const loadFact = async () => {
-        setLoadingFact(true);
-        const text = await generateAdoFunFact();
-        setFunFact(text);
-        setLoadingFact(false);
-      };
+    fetchGlobalStats();
+
+    if (hasVoted && selectedCountry) {
       loadFact();
     }
-  }, []); // Run only once on mount
+  }, [hasVoted, selectedCountry]);
 
-  // Handle user vote
-  const handleVote = async (country: string) => {
-    setSelectedCountry(country);
-    localStorage.setItem('hasVoted', 'true');
-    localStorage.setItem('selectedCountry', country);
-    
-    // Update local stats (simulate poll backend)
-    setStats(prev => ({
-      ...prev,
-      [country]: (prev[country] || 0) + 1
-    }));
-    
-    setHasVoted(true);
-
-    // Fetch AI fun fact
+  const loadFact = async () => {
     setLoadingFact(true);
     const text = await generateAdoFunFact();
     setFunFact(text);
     setLoadingFact(false);
+  };
+
+  // 2. Handle User Vote (Update Database)
+  const handleVote = async (country: string) => {
+    try {
+      // Send vote to backend
+      const response = await fetch(`${API_BASE_URL}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country }),
+      });
+
+      if (!response.ok) throw new Error('Vote failed');
+
+      const updatedStats = await response.json();
+      
+      // Update local state with fresh data from DB
+      setStats(updatedStats);
+      setSelectedCountry(country);
+      setHasVoted(true);
+      
+      localStorage.setItem('hasVoted', 'true');
+      localStorage.setItem('selectedCountry', country);
+      
+      loadFact();
+    } catch (err) {
+      alert("System Error: Could not transmit voice to archives.");
+      console.error(err);
+    }
   };
 
   const handleRePoll = () => {
@@ -60,6 +76,8 @@ const App: React.FC = () => {
     localStorage.removeItem('selectedCountry');
     window.location.reload();
   };
+
+  // ... rest of the JSX remains the same
 
   return (
     <div className="relative w-full h-screen text-white bg-[#050510] overflow-hidden selection:bg-rose-500 selection:text-white">
