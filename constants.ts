@@ -28,18 +28,6 @@ export const COUNTRIES = [
   "Zambia", "Zimbabwe"
 ].sort();
 
-// Initial randomized "poll" data to make the map look interesting before the user votes
-export const INITIAL_STATS: Record<string, number> = {
-  "Japan": 0, // High because Ado
-  "United States": 0,
-  "France": 0,
-  "Indonesia": 0,
-  "South Korea": 0,
-  "Brazil": 0,
-  "United Kingdom": 0,
-  "Thailand": 0,
-};
-
 // Colors
 export const COLOR_LOW = "#000033"; // Deep Blue
 export const COLOR_MID = "#4b0082"; // Indigo
