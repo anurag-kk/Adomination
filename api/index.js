@@ -7,11 +7,26 @@ import Stat from '../models/Stat.js';
 const app = express();
 
 // Middleware setup
+const allowedOrigins = [
+  'https://adomination.vercel.app', // Your Vercel production URL
+];
+
 app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Block the request if the origin is not in our list
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'], // Limit to only the methods your app actually uses
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
 // Serverless Connection Logic
