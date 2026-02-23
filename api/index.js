@@ -3,7 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import Stat from '../models/Stat.js';
-import { COUNTRIES } from '../constants.ts';
+import { COUNTRIES } from '../constants.js';
 
 const app = express();
 
