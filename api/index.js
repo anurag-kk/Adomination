@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import Stat from '../models/Stat.js';
+import { COUNTRIES } from '../constants.ts';
 
 const app = express();
 
@@ -28,6 +29,42 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Input Validation Middleware
+const validateVoteInput = (req, res, next) => {
+  const { country } = req.body;
+  
+  // Check if country is provided
+  if (!country) {
+    return res.status(400).json({ error: "Country is required" });
+  }
+  
+  // Check if country is a string
+  if (typeof country !== 'string') {
+    return res.status(400).json({ error: "Country must be a string" });
+  }
+  
+  // Trim and validate length (prevent long scripts)
+  const trimmedCountry = country.trim();
+  if (trimmedCountry.length === 0 || trimmedCountry.length > 100) {
+    return res.status(400).json({ error: "Invalid country format" });
+  }
+  
+  // Check for script tags and common XSS patterns
+  const xssPatterns = /<script|<iframe|javascript:|on\w+\s*=|<svg|<img/gi;
+  if (xssPatterns.test(trimmedCountry)) {
+    return res.status(400).json({ error: "Invalid input detected" });
+  }
+  
+  // Validate against the allowed countries list
+  if (!COUNTRIES.includes(trimmedCountry)) {
+    return res.status(400).json({ error: "Country not recognized" });
+  }
+  
+  // Attach validated country to request
+  req.body.country = trimmedCountry;
+  next();
+};
 
 // Serverless Connection Logic
 let cachedDb = null;
@@ -56,7 +93,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // POST: Increment vote count
-app.post('/api/vote', async (req, res) => {
+app.post('/api/vote', validateVoteInput, async (req, res) => {
   try {
     await connectToDatabase();
     const { country } = req.body;
